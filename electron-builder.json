@@ -2,7 +2,6 @@
     "productName": "imFile",
     "appId": "app.imfile.native",
     "afterPack": "./build/afterPackHook.js",
-    "afterSign": "./build/afterSignHook.js",
     "fileAssociations": [
       {
         "ext": "torrent",
@@ -75,6 +74,7 @@
           ]
         }
       ],
+      "identity": null,
       "type": "development",
       "darkModeSupport": true,
       "hardenedRuntime": false,
@@ -93,25 +93,29 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         },
         {
           "target": "appx",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         },
         {
           "target": "portable",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         }
       ],
@@ -164,7 +168,8 @@
         {
           "target": "rpm",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         },
         {

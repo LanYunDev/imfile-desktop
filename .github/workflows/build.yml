@@ -1,0 +1,273 @@
+name: Build
+
+on:
+  schedule:
+    - cron: '0 1 */7 * *'
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+jobs:
+  release-linux:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install libarchive-tools
+        run: sudo apt update; sudo apt install -y libarchive-tools libx11-dev libx11-xcb-dev libxcb1-dev build-essential; sudo snap install snapcraft --classic
+
+      - name: Install Rust
+        run: |
+          curl -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --no-modify-path -y
+          rustup install stable
+          sudo gem install fpm
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          # npm cache files are stored in `~/.npm` on Linux/macOS
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: rpm
+        run: |
+          sudo apt update 1>&2
+          sudo apt install --install-recommends rpm -y 1>&2
+
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - run: yarn install --network-timeout 100000
+      - run: yarn run build:linux
+
+      - name: ls Build File
+        run: echo -e "\n构建目录内容如下:"; ls -la release/
+
+      - name: Get Version Number
+        id: getPackageInfo
+        uses: jaywcjlove/github-action-package@main
+
+      - name: Upload Application snap Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly_amd64-linux.snap
+          path: release/imFile_${{ steps.getPackageInfo.outputs.version }}_amd64.snap
+
+      - name: Upload Application amd64 deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-amd64-linux.deb
+          path: release/imFile_${{ steps.getPackageInfo.outputs.version }}_amd64.deb
+
+      - name: Upload Application amd64 rpm Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-amd64.x86_64-linux.rpm
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}.x86_64.rpm
+
+      - name: Upload Application AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly.AppImage
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}.AppImage
+
+      - name: Upload Application arm64 deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-amd64.aarch64-linux.rpm
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}.aarch64.rpm
+
+      - name: Upload Application arm64 AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-arm64-linux.AppImage
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-arm64.AppImage
+
+      - name: Upload Application arm64 deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-arm64-linux.deb
+          path: release/imFile_${{ steps.getPackageInfo.outputs.version }}_arm64.deb
+
+      - name: Upload Application armv7l AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-armv7l-linux.AppImage
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-armv7l.AppImage
+
+      - name: Upload Application armv7l deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-armv7l-linux.deb
+          path: release/imFile_${{ steps.getPackageInfo.outputs.version }}_armv7l.deb
+
+  release-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    environment: release
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          # npm cache files are stored in `~/.npm` on Linux/macOS
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - run: yarn install --network-timeout 100000
+      - run: yarn run build:mac
+
+      - name: ls Build File
+        run: echo -e "\n构建目录内容如下:"; ls -la release/
+
+      - name: Get Version Number
+        id: getPackageInfo
+        uses: jaywcjlove/github-action-package@main
+
+      - name: Upload Application arm64 .dmg Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-arm64-nightly-mac.dmg
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-arm64.dmg
+
+      - name: Upload Application arm64 .zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-arm64-nightly-mac.zip
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-arm64-mac.zip
+
+      - name: Upload Application .dmg Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-intel-nightly-mac.dmg
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}.dmg
+
+      - name: Upload Application .zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-intel-nightly-mac.zip
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-mac.zip
+
+  release-windows:
+    runs-on: windows-latest
+    environment: release
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          # npm cache files are stored in `~/.npm` on Linux/macOS
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - run: yarn install --network-timeout 100000
+      - run: yarn run build:win
+
+      - name: ls Build File windows
+        run: |
+          Write-Host "`n构建目录内容如下:" -ForegroundColor Green
+          Get-ChildItem -Path "release\" -Force
+
+      - name: Get Version Number
+        id: getPackageInfo
+        uses: jaywcjlove/github-action-package@main
+
+      - name: Upload Application Setup exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-Setup-win.exe
+          path: release/imFile-Setup-${{ steps.getPackageInfo.outputs.version }}.exe
+
+      - name: Upload Application exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-win.exe
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}.exe
+
+      - name: Upload Application appx Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-x64-win.appx
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-x64.appx
+
+      - name: Upload Application zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-win.zip
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-win.zip
+
+      - name: Upload Application x64 exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-x64-win.exe
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-x64.exe
+
+      - name: Upload Application arm64 appx Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-arm64-win.appx
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-arm64.appx
+
+      - name: Upload Application arm64 zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-arm64-win.zip
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-arm64-win.zip
+
+      - name: Upload Application arm64 exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imFile-nightly-arm64-win.exe
+          path: release/imFile-${{ steps.getPackageInfo.outputs.version }}-arm64.exe
+
+
+
+
+
+
+
